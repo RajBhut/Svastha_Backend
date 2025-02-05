@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Volunteer {
+  id             String   @id @default(uuid())
+  name           String
+  email          String   @unique
+  phone          String?
+  address        String?
+  city           String?
+  state          String?
+  zip            String?
+  availability   Json // Stores the availability object
+  additionalInfo String?
+  proofDocument  String? // URL/path to uploaded document
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model NGO {
+  id                  String   @id @default(uuid())
+  orgName             String
+  regNumber           String   @unique
+  email               String   @unique
+  phone               String?
+  address             String?
+  website             String?
+  foundingYear        String?
+  proofOfRegistration String? // URL/path to uploaded document
+  contactPerson       Json // Stores the contact person object
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
