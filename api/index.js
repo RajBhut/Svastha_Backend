@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
-
+import auth0 from "../Auth.js";
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,7 +17,7 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const prisma = new PrismaClient();
 const app = express();
-
+app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: ["http://localhost:5173"],
@@ -36,37 +36,29 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
-app.post(
-  "/api/volunteers",
-  upload.single("proofDocument"),
-  async (req, res) => {
-    try {
-      const data = req.body;
-
-      if (data.availability) {
-        try {
-          data.availability = JSON.parse(data.availability);
-        } catch (parseError) {
-          return res.status(400).json({ error: "Invalid availability format" });
-        }
-      }
-      console.log(data);
-      const volunteer = await prisma.volunteer.create({
-        data: {
-          ...data,
-          proofDocument: req.file ? req.file.path : null,
-        },
-      });
-      res.json(volunteer);
-    } catch (error) {
-      if (req.file && req.file.path) {
-        await cloudinary.uploader.destroy(req.file.filename);
-      }
-      console.log(error);
-      res.status(400).json({ error: error.message });
-    }
+app.get("/api/ngos/:id", async (req, res) => {
+  try {
+    const ngo = await prisma.nGO.findUnique({
+      where: { id: req.params.id },
+    });
+    res.json(ngo);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: error.message });
   }
-);
+});
+
+app.get("/api/ngos", async (req, res) => {
+  try {
+    const ngos = await prisma.nGO.findMany();
+    res.json(ngos);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+//----------------------
+
+//-----
 
 app.get("/api/volunteers", async (req, res) => {
   try {
@@ -76,7 +68,38 @@ app.get("/api/volunteers", async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+app.post("/api/hist/:id", async (req, res) => {
+  try {
+    const msg = req.body.msg;
+    const ty = req.body.type;
+    const id = req.params.id;
 
+    const chat = await prisma.chatHistory.create({
+      data: {
+        userId: id,
+        type: ty,
+        content: msg,
+      },
+    });
+
+    res.json(chat);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: error.message });
+  }
+});
+app.get("/api/hist/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const chats = await prisma.chatHistory.findMany({
+      where: { userId: id },
+    });
+
+    res.json(chats);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 app.get("/api/volunteers/:id", async (req, res) => {
   try {
     const volunteer = await prisma.volunteer.findUnique({
@@ -84,130 +107,49 @@ app.get("/api/volunteers/:id", async (req, res) => {
     });
     res.json(volunteer);
   } catch (error) {
+    console.log(error);
     res.status(400).json({ error: error.message });
   }
 });
-
+// Modify volunteer route
 app.post(
-  "/api/ngos",
-  upload.single("proofOfRegistration"),
-  async (req, res) => {
-    try {
-      const data = req.body;
+  "/api/volunteers",
 
-      if (data.availability) {
-        try {
-          data.availability = JSON.parse(data.availability);
-        } catch (parseError) {
-          return res.status(400).json({ error: "Invalid availability format" });
-        }
-      }
-      console.log(data);
-      const ngo = await prisma.nGO.create({
+  async (req, res) => {
+    const data = req.body;
+    console.log("data", req.body);
+    try {
+      const volunteer = await prisma.volunteer.create({
         data: {
           ...data,
-          proofOfRegistration: req.file ? req.file.path : null,
-          contactPerson: JSON.parse(data.contactPerson),
+          proofDocument: null,
         },
       });
-      res.json(ngo);
+      res.json(volunteer);
     } catch (error) {
-      if (req.file && req.file.path) {
-        await cloudinary.uploader.destroy(req.file.filename);
-      }
       console.log(error);
       res.status(400).json({ error: error.message });
     }
   }
 );
-// app.post(
-//   "/api/ngos",
 
-//   async (req, res) => {
-//     try {
-//       const data = JSON.parse(req.body.data);
-//       const ngo = await prisma.nGO.create({
-//         data: {
-//           ...data,
+app.post(
+  "/api/ngos",
 
-//           contactPerson: JSON.parse(data.contactPerson),
-//         },
-//       });
-//       res.json(ngo);
-//     } catch (error) {
-//       res.status(400).json({ error: error.message });
-//     }
-//   }
-// );
-const deleteOldFile = async (url) => {
-  if (!url) return;
-  try {
-    const publicId = url.split("/").slice(-1)[0].split(".")[0];
-    await cloudinary.uploader.destroy(publicId);
-  } catch (error) {
-    console.error("Error deleting old file:", error);
-  }
-};
-
-app.put(
-  "/api/ngos/:id",
-  upload.single("proofOfRegistration"),
   async (req, res) => {
     try {
-      const data = JSON.parse(req.body.data);
-      const oldNgo = await prisma.nGO.findUnique({
-        where: { id: req.params.id },
-      });
-
-      if (req.file) {
-        await deleteOldFile(oldNgo.proofOfRegistration);
-        data.proofOfRegistration = req.file.path;
-      }
-
-      const ngo = await prisma.nGO.update({
-        where: { id: req.params.id },
+      const data = req.body;
+      console.log("data", req);
+      const ngo = await prisma.nGO.create({
         data: {
           ...data,
+          proofOfRegistration: null,
           contactPerson: JSON.parse(data.contactPerson),
         },
       });
       res.json(ngo);
     } catch (error) {
-      if (req.file && req.file.path) {
-        await cloudinary.uploader.destroy(req.file.filename);
-      }
-      res.status(400).json({ error: error.message });
-    }
-  }
-);
-
-app.put(
-  "/api/volunteers/:id",
-  upload.single("proofOfStudent"),
-  async (req, res) => {
-    try {
-      const data = JSON.parse(req.body.data);
-      const oldVolunteer = await prisma.volunteer.findUnique({
-        where: { id: req.params.id },
-      });
-
-      if (req.file) {
-        await deleteOldFile(oldVolunteer.proofDocument);
-        data.proofDocument = req.file.path;
-      }
-
-      const volunteer = await prisma.volunteer.update({
-        where: { id: req.params.id },
-        data: {
-          ...data,
-          availability: JSON.parse(data.availability),
-        },
-      });
-      res.json(volunteer);
-    } catch (error) {
-      if (req.file && req.file.path) {
-        await cloudinary.uploader.destroy(req.file.filename);
-      }
+      console.log(error);
       res.status(400).json({ error: error.message });
     }
   }

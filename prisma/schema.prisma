@@ -22,24 +22,63 @@ model Volunteer {
   city           String?
   state          String?
   zip            String?
-  availability   Json // Stores the availability object
+  availability   Json
   additionalInfo String?
-  proofDocument  String? // URL/path to uploaded document
+  proofDocument  String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  ngoId          String?
+  ngo            NGO?     @relation(fields: [ngoId], references: [id])
 }
 
 model NGO {
-  id                  String   @id @default(uuid())
+  id                  String      @id @default(uuid())
   orgName             String
-  regNumber           String   @unique
-  email               String   @unique
+  regNumber           String      @unique
+  email               String      @unique
   phone               String?
   address             String?
   website             String?
   foundingYear        String?
-  proofOfRegistration String? // URL/path to uploaded document
-  contactPerson       Json // Stores the contact person object
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  proofOfRegistration String?
+  contactPerson       Json
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  volunteers          Volunteer[]
+}
+
+model ChatHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  type      TYPE
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TYPE {
+  user
+  bot
+}
+
+model Therapist {
+  id             String   @id @default(uuid())
+  name           String
+  image          String
+  title          String
+  specialties    String[]
+  approach       String
+  experience     String
+  rating         Float
+  reviews        Int
+  nextAvailable  String
+  price          String
+  languages      String[]
+  formats        String[]
+  education      String[]
+  certifications String[]
+  about          String
+  publications   String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
